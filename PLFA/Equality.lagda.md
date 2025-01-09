@@ -34,9 +34,9 @@ subst : ∀ {A : Set} (P : A → Set) {x y : A} → x ≡ y → P x → P y
 subst P refl px = px
 ```
 
-# ≡-Reasoning
+## ≡-Reasoning
 
-## A nested module
+### A nested module
 
 The contents of nested modules need to be indented appropriately.
 ```agda
@@ -67,7 +67,7 @@ Once we defined a nested module, it needs to be opened for it to be available in
 open ≡-Reasoning
 ```
 
-## A simple example, explained
+### A simple example, explained
 
 ```agda
 trans' : ∀ {A : Set} {x y z : A} → x ≡ y → y ≡ z → x ≡ z
@@ -89,7 +89,7 @@ trans x≡y y≡z
 x ≡ z
 ```
 
-## A slightly more involved, but familiar example
+### A slightly more involved, but familiar example
 
 Declaring an identifier with a signature, but not providing a definition is called a postulate.
 ```agda
@@ -116,7 +116,7 @@ m + S n ≡⟨ +-suc m n ⟩ (trans (cong S (+-comm m n)) refl)
 trans (+-suc m n) (trans (cong S (+-comm m n)) refl)
 ```
 
-## Exercise ≤-Reasoning
+### Exercise ≤-Reasoning
 
 First, the required definitions.
 ```agda
@@ -174,7 +174,7 @@ And finally the more readable proofs.
 +-mono-≤ m n p q m≤n p≤q = begin-≤ m + p ≤⟨ +-monoˡ-≤ m n p m≤n ⟩ n + p ≤⟨ +-monoʳ-≤ n p q p≤q ⟩ n + q ∎'
 ```
 
-# Rewriting
+## Rewriting
 
 Some preparations.
 ```agda
@@ -205,3 +205,79 @@ even-comm' m n ev with   m + n  | +-comm m n
 ```
 
 I sill can't quite understand this `with`-clause thing in Agda.
+
+```agda
+even-comm'' : ∀ (m n : ℕ) → even (m + n) → even (n + m)
+even-comm'' m n = subst even (+-comm m n)
+```
+
+This might be worth unpacking quickly. The function `subst` takes a predicate `P` and a proof that `x` and `y` are equivalent (equal) and produces a proof that whenever `x` satisfies `P`, so does `y`. In our case this translates to the following. `subst` takes the predicate that a natural number is `even`, and a proof that `m + n ≡ n + m` (that is `+-comm m n`).
+
+```pseudo-code
++-comm m n : m + n ≡ n m
+even : ℕ → Set
+subst : {A : Set} {x y  : A} → (P : A → Set) → x ≡ y → P x → P y
+```
+
+## Leibniz's definition of equality
+
+> Identity of the indiscernibles: two objects are equal if and only if they satisfy the same properties.
+
+```agda
+_≐_ : ∀ {A : Set} (x y : A) → Set₁
+_≐_ {A} x y = ∀ (P : A → Set) → P x → P y
+
+refl-≐ : ∀ {A : Set} {x : A} → x ≐ x
+refl-≐ P Px = Px
+
+trans-≐ : ∀ {A : Set} {x y z : A} → x ≐ y → y ≐ z → x ≐ z
+trans-≐ x≐y y≐z P Px = y≐z P (x≐y P Px)
+```
+
+Symmetry is a bit more involved, so let's unpack it.
+1. `Q z` is the predicate that asserts that whenever `z` satisfies `P`, so does `x`.
+1. Hence, `Q x` is the tautology asserting that whenever `x` satisfies `P`, so does `x`. Clear so far.
+1. Now a term of type `Q y` is proof that whenever `y` satisfies `P`, so does `x`. _Id est_, this is what we want to prove.
+1. Take look at `x≐y Q`. This is a function that produces a proof of `Q y` whenever it is given a proof of `Q x`. But we do have such a proof, namely `Qx`.
+
+```agda
+sym-≐ : ∀ {A : Set} {x y : A} → x ≐ y → y ≐ x
+sym-≐ {A} {x} {y} x≐y P = Qy
+  where
+    Q : A → Set
+    Q z = P z → P x
+    Qx : Q x
+    Qx = refl-≐ P
+    Qy : Q y
+    Qy = x≐y Q Qx
+```
+
+Next we show that Martin-Löf equality is equivalent to Leibniz equality.
+
+```agda
+≡-implies-≐ : ∀ {A : Set} {x y : A} → x ≡ y → x ≐ y
+≡-implies-≐ x≡y P = subst P x≡y
+
+≐-implies-≡ : ∀ {A : Set} {x y : A} → x ≐ y → x ≡ y
+≐-implies-≡ {A} {x} {y} x≐y = x≐y (x ≡_) refl
+```
+
+## Universe Polymorphism
+
+being aware to the hierarchiy of universes `set`, `set₁`, `set₂`, etc. the question might arise, what if we want to compare values from different universes (or levels)? Note that levels are isomorphic to natural numbers, hence the similar name of the constructors.
+
+```agda
+open import Level using (Level; _⊔_) renaming (zero to lzero; suc to lsuc)
+
+data _≡'_ {ℓ : Level} {A : Set ℓ} (x : A) : A → Set ℓ where
+  refl' : x ≡' x
+
+sym' : ∀ {ℓ : Level} {A : Set ℓ} {x y : A} → x ≡' y → y ≡' x
+sym' refl' = refl'
+
+_≐'_ : ∀ {ℓ : Level} {A : Set ℓ} (x y : A) → Set (lsuc ℓ)
+_≐'_ {ℓ} {A} x y = ∀ (P : A → Set ℓ) → P y → P y
+
+_∘_ : ∀ {ℓ : Level} {A B C : Set ℓ} → (A → B) → (B → C) → (A → C)
+(f ∘ g) c = g (f c)
+```
