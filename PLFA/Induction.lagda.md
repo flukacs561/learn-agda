@@ -1,10 +1,16 @@
+# Part I: Induction
+
+```agda
 module PLFA.Induction where
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; cong; sym)
 open Eq.≡-Reasoning using (begin_; step-≡-∣; step-≡-⟩; _∎)
 open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _^_)
+```
 
+## Associativity
+```agda
 +-assoc : ∀ (m n p : ℕ) → (m + n) + p ≡ m + (n + p)
 +-assoc zero n p = begin (zero + n) + p
                    ≡⟨⟩ n + p
@@ -14,18 +20,31 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _^_)
                       ≡⟨⟩ suc ((m + n) + p)
                       ≡⟨ cong suc (+-assoc m n p) ⟩ suc (m + (n + p))
                       ≡⟨⟩ suc m + (n + p) ∎
+```
 
+## Commutativity
+
+For this we are going to need two lemmas
+
+### The first lemma
+```agda
 +-identityʳ : ∀ (m : ℕ) → m + zero ≡ m
 +-identityʳ zero = begin zero + zero ≡⟨⟩ zero ∎
 +-identityʳ (suc m) = begin suc m + zero ≡⟨⟩ suc (m + zero) ≡⟨ cong suc (+-identityʳ m) ⟩ suc m ∎
+```
 
+### The second lemma
+```agda
 +-suc : ∀ (m n : ℕ) → m + suc n ≡ suc (m + n)
 +-suc zero n = begin zero + suc n ≡⟨⟩ suc n ≡⟨⟩ suc (zero + n) ∎
 +-suc (suc m) n = begin suc m + suc n
                   ≡⟨⟩ suc (m + suc n)
                   ≡⟨ cong suc (+-suc m n) ⟩ suc (suc (m + n))
                   ≡⟨⟩ suc (suc m + n) ∎
+```
 
+And finally the proof.
+```agda
 +-identityˡ : ∀ (m : ℕ) → zero + m ≡ m
 +-identityˡ zero = begin zero + zero ≡⟨⟩ zero ∎
 +-identityˡ (suc m) = begin zero + suc m ≡⟨⟩ suc (zero + m) ≡⟨ cong suc (+-identityˡ m) ⟩ suc m ∎
@@ -33,12 +52,18 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _^_)
 +-comm : ∀ (m n : ℕ) → m + n ≡ n + m
 +-comm m zero = begin m + zero ≡⟨ +-identityʳ m ⟩ m ≡⟨⟩ zero + m ∎
 +-comm m (suc n) = begin m + suc n ≡⟨ +-suc m n ⟩ suc (m + n) ≡⟨ cong suc (+-comm m n) ⟩ suc (n + m) ≡⟨⟩ suc n + m ∎
+```
 
+## Corollary: rearranging
+```agda
 +-rearrange : ∀ (m n p q : ℕ) → (m + n) + (p + q) ≡ m + (n + p) + q
 +-rearrange m n p q = begin (m + n) + (p + q)
                       ≡⟨ sym (+-assoc (m + n) p q) ⟩ ((m + n) + p) + q
                       ≡⟨ cong (_+ q) (+-assoc m n p) ⟩ (m + (n + p)) + q ∎
+```
 
+## The same proogs, now using rewrite
+```agda
 +-assoc' : ∀ (m n p : ℕ) → (m + n) + p ≡ m + (n + p)
 +-assoc' zero n p = refl
 +-assoc' (suc m) n p rewrite +-assoc' m n p = refl
@@ -54,24 +79,36 @@ open import Data.Nat using (ℕ; zero; suc; _+_; _*_; _∸_; _^_)
 +-comm' : ∀ (m n : ℕ) → m + n ≡ n + m
 +-comm' m zero rewrite +-identity' m = refl
 +-comm' m (suc n) rewrite +-suc' m n | +-comm' m n = refl
+```
 
+### Exercise `+-swap`
+```agda
 +-swap : ∀ (m n p : ℕ) → m + (n + p) ≡ n + (m + p)
 +-swap m n p rewrite sym (+-assoc' m n p) | +-comm' m n | +-assoc' n m  p = refl
+```
 
+### Exercise `*-distrib-+`
+```agda
 *-distrib-+ : ∀ (m n p : ℕ) → (m + n) * p ≡ (m * p) + (n * p)
 *-distrib-+ zero n p = refl
 *-distrib-+ (suc m) n p rewrite *-distrib-+ m n p | sym (+-assoc' p (m * p) (n * p)) = refl
+```
 
--- *-distrib-+ (suc m) n p = begin (suc m + n) * p
---                           ≡⟨⟩
---                             suc (m + n) * p ≡⟨⟩ p + ((m + n) * p)
---                           ≡⟨ cong (p +_) (*-distrib-+ m n p) ⟩
---                             p + ((m * p) + (n * p))
---                           ≡⟨ sym (+-assoc' p (m * p) (n * p)) ⟩
---                             (p + (m * p)) + (n * p)
---                           ≡⟨⟩
---                             (suc m * p) + (n * p) ∎
+Also without rewrite
+```pseudocode
+*-distrib-+ (suc m) n p = begin (suc m + n) * p
+                          ≡⟨⟩
+                            suc (m + n) * p ≡⟨⟩ p + ((m + n) * p)
+                          ≡⟨ cong (p +_) (*-distrib-+ m n p) ⟩
+                            p + ((m * p) + (n * p))
+                          ≡⟨ sym (+-assoc' p (m * p) (n * p)) ⟩
+                            (p + (m * p)) + (n * p)
+                          ≡⟨⟩
+                            (suc m * p) + (n * p) ∎
+```
 
+### Exercise `+-comm`
+```agda
 *-suc : ∀ (m n : ℕ) → m + m * n ≡ m * suc n
 *-suc zero n = refl
 *-suc (suc m) n rewrite sym (+-assoc' m n (m * n)) | +-comm' m n | +-assoc' n m (m * n) | *-suc m n = refl
@@ -83,11 +120,17 @@ n*0≡0 (suc n) rewrite n*0≡0 n = refl
 *-comm : ∀ (m n : ℕ) → m * n ≡ n * m
 *-comm zero n = begin zero ≡⟨ sym (n*0≡0 n) ⟩ n * zero ∎
 *-comm (suc m) n rewrite *-comm m n | *-suc n m = refl
+```
 
+### Exercise `*-assoc`
+```agda
 *-assoc : ∀ (m n p : ℕ) → (m * n) * p ≡ m * (n * p)
 *-assoc zero n p = refl
 *-assoc (suc m) n p rewrite *-distrib-+ n (m * n) p | sym (*-assoc m n p) = refl
+```
 
+### Exercise `+*^`
+```agda
 *-identityˡ : ∀ (n : ℕ) → n * 1 ≡ n
 *-identityˡ zero = refl
 *-identityˡ (suc n) rewrite *-identityˡ n = refl
@@ -103,7 +146,10 @@ n*0≡0 (suc n) rewrite n*0≡0 n = refl
 ^-distribʳ-* : ∀ (m n p : ℕ) → (m * n) ^ p ≡ (m ^ p) * (n ^ p)
 ^-distribʳ-* m n zero = refl
 ^-distribʳ-* m n (suc p) rewrite ^-distribʳ-* m n p | sym (*-assoc (m * n) (m ^ p) (n ^ p)) | *-comm m n | *-assoc n m (m ^ p) | *-comm n (m * m ^ p) | *-assoc (m * m ^ p) n (n ^ p) = refl
+```
 
+### Exercise `Bin-laws`
+```agda
 open import PLFA.Bin
 
 n+1≡sucn : ∀ (n : ℕ) → n + 1 ≡ suc n
@@ -121,3 +167,4 @@ law2CounterExample = refl
 law3 : ∀ (n : ℕ) → from (to n) ≡ n
 law3 zero = refl
 law3 (suc n) rewrite law1 (to n) | law3 n = refl
+```
